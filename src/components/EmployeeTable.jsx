@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { HardDrive, Cpu, AlertTriangle, Shield, ShieldAlert } from 'lucide-react';
+import { HardDrive, Cpu, AlertTriangle, Shield, ShieldAlert, MapPin } from 'lucide-react';
 
 const riskConfig = {
   High: { color: 'text-red-400 bg-red-500/10 border-red-500/20', icon: ShieldAlert },
@@ -54,6 +54,7 @@ export default function EmployeeTable({ agents, isDark }) {
               <th className="px-4 py-3 font-medium">Department</th>
               <th className="px-4 py-3 font-medium">Salary</th>
               <th className="px-4 py-3 font-medium">Tenure</th>
+              <th className="px-4 py-3 font-medium">Commute</th>
               <th className="px-4 py-3 font-medium">Burnout</th>
               <th className="px-4 py-3 font-medium">Satisfaction</th>
               <th className="px-4 py-3 font-medium">Flight Risk</th>
@@ -100,6 +101,14 @@ export default function EmployeeTable({ agents, isDark }) {
                   <td className="px-4 py-3 text-text-secondary tabular-nums font-medium">${agent.annualSalary.toLocaleString()}</td>
                   <td className="px-4 py-3 text-text-muted tabular-nums">
                     {agent.tenure >= 12 ? `${Math.floor(agent.tenure / 12)}y ${agent.tenure % 12}m` : `${agent.tenure}m`}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1.5">
+                      <MapPin size={12} className={agent.effectiveCommute > 30 ? 'text-red-400' : 'text-text-faint'} />
+                      <span className={`text-sm tabular-nums font-medium ${agent.effectiveCommute > 30 ? 'text-red-400' : 'text-text-secondary'}`}>
+                        {Math.round(agent.effectiveCommute)}km
+                      </span>
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">

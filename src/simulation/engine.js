@@ -41,10 +41,12 @@ export function generateAgents(count = 500) {
       burnoutLevel: Math.max(0, Math.min(1, randomNormal(0.3, 0.2))), // 0 to 1
       status: 'Active',
       attritionReason: null,
-      flightRisk: 'Low' // Will be calculated dynamically
+      flightRisk: 'Low', // Will be calculated dynamically
+      effectiveCommute: Math.max(1, randomNormal(20, 15)) // Initial value same as commutingDistance
     };
   }).map(agent => ({
     ...agent,
+    commutingDistance: agent.effectiveCommute, // Keep base distance
     flightRisk: computeFlightRisk(agent, agent.baseSalaryCompetitiveness)
   }));
 }
@@ -63,6 +65,7 @@ function simulateSingleRun(initialAgents, months, rules) {
       let effectiveOvertime = agent.baseOvertimeHours + rules.mandatedOvertime;
       let effectiveSalaryComp = agent.baseSalaryCompetitiveness * rules.baseSalaryModifier;
       let effectiveCommute = rules.wfhEnabled ? agent.commutingDistance * 0.2 : agent.commutingDistance;
+      agent.effectiveCommute = effectiveCommute; // Store for UI
       
       // Update variables over time
       agent.tenure += 1;
