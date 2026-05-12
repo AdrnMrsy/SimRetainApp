@@ -1,12 +1,46 @@
-// Helper functions for random distributions
-function randomNormal(mean, stdDev) {
-  let u = 0, v = 0;
-  while(u === 0) u = Math.random(); //Converting [0,1) to (0,1)
-  while(v === 0) v = Math.random();
-  let num = Math.sqrt( -2.0 * Math.log( u ) ) * Math.cos( 2.0 * Math.PI * v );
-  num = num / 10.0 + 0.5; // Translate to 0 -> 1
-  if (num > 1 || num < 0) return randomNormal(mean, stdDev); // resample between 0 and 1
-  return (num - 0.5) * 10 * stdDev + mean;
+import attritionDataRaw from '../data/WA_Fn-UseC_-HR-Employee-Attrition.csv?raw';
+
+// Professional CSV parsing function
+function parseCSV(csvText) {
+  const lines = csvText.trim().split('\n');
+  if (lines.length === 0) return [];
+  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+  
+  const data = [];
+  for (let i = 1; i < lines.length; i++) {
+    const row = lines[i].trim();
+    if (!row) continue;
+    
+    // Handle comma delimited values, ignoring complexity of commas inside quotes for this clean dataset
+    const values = row.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+    
+    const obj = {};
+    headers.forEach((header, index) => {
+      obj[header] = values[index];
+    });
+    data.push(obj);
+  }
+  return data;
+}
+
+// Compute market salary average per JobRole for competitiveness benchmarking
+function computeMarketSalaries(data) {
+  const roleSalaries = {};
+  data.forEach(row => {
+    const role = row.JobRole;
+    const salary = parseInt(row.MonthlyIncome, 10);
+    if (!roleSalaries[role]) {
+      roleSalaries[role] = { total: 0, count: 0 };
+    }
+    roleSalaries[role].total += salary;
+    roleSalaries[role].count += 1;
+  });
+  
+  const averages = {};
+  for (const role in roleSalaries) {
+    averages[role] = roleSalaries[role].total / roleSalaries[role].count;
+  }
+  return averages;
 }
 
 function computeFlightRisk(agent, effectiveSalaryComp) {
@@ -22,31 +56,63 @@ function computeFlightRisk(agent, effectiveSalaryComp) {
   return 'Low';
 }
 
-export function generateAgents(count = 500) {
-  return Array.from({ length: count }, (_, i) => {
-    const isIT = Math.random() > 0.5;
-    const baseMarketSalary = isIT ? 95000 : 105000;
-    const compRatio = Math.max(0.6, Math.min(1.4, randomNormal(0.95, 0.15)));
+export function generateAgents() {
+  // 1. Parse raw data
+  let rawData = parseCSV(attritionDataRaw);
+  
+  // Clean Data: filter out any invalid rows (e.g., missing EmployeeNumber or MonthlyIncome)
+  rawData = rawData.filter(row => row.EmployeeNumber && row.MonthlyIncome && row.Age);
+  
+  // 2. Data Cleaning & Feature Engineering
+  const roleAverages = computeMarketSalaries(rawData);
+  
+  let agents = rawData.map(row => {
+    const monthlyIncome = parseInt(row.MonthlyIncome, 10) || 0;
+    const roleAverage = roleAverages[row.JobRole] || monthlyIncome;
     
+    // Normalize ratio to avoid extreme outliers impacting the sim heavily (range 0.6 to 1.4)
+    let compRatio = monthlyIncome / (roleAverage || 1);
+    compRatio = Math.max(0.6, Math.min(1.4, compRatio));
+    
+    // PerformanceRating in dataset is 3 or 4 mostly
+    const perfRating = parseInt(row.PerformanceRating, 10) || 3; 
+    
+    // JobSatisfaction 1-4 mapped to 0.1-1.0
+    const jobSatRaw = parseInt(row.JobSatisfaction, 10) || 3;
+    const jobSatisfaction = Math.max(0.1, jobSatRaw / 4);
+    
+    // WorkLifeBalance 1-4 mapped to burnout (1 is bad -> high burnout, 4 is best -> low burnout)
+    const wlb = parseInt(row.WorkLifeBalance, 10) || 3;
+    const burnoutLevel = Math.max(0, (4 - wlb) / 4);
+    
+    // OverTime 'Yes' implies regular overtime hours, 'No' implies very few
+    const baseOvertimeHours = row.OverTime === 'Yes' ? 20 : Math.max(0, Math.floor(Math.random() * 5));
+    
+    const commutingDistance = parseInt(row.DistanceFromHome, 10) || 5;
+
     return {
-      id: i + 1,
-      department: isIT ? 'IT' : 'Engineering',
-      annualSalary: Math.round(baseMarketSalary * compRatio),
-      tenure: Math.max(0, Math.floor(randomNormal(36, 24))), // months
-      baseSalaryCompetitiveness: compRatio, // ratio to market
-      commutingDistance: Math.max(1, randomNormal(20, 15)), // km
-      baseOvertimeHours: Math.max(0, randomNormal(10, 10)), // hours per month
-      performanceRating: Math.round(Math.max(1, Math.min(5, randomNormal(3.2, 1)))), // 1 to 5
-      jobSatisfaction: Math.max(0.1, Math.min(1, randomNormal(0.7, 0.2))), // 0 to 1
-      burnoutLevel: Math.max(0, Math.min(1, randomNormal(0.3, 0.2))), // 0 to 1
+      id: parseInt(row.EmployeeNumber, 10),
+      department: row.Department,
+      jobRole: row.JobRole,
+      age: parseInt(row.Age, 10),
+      annualSalary: monthlyIncome * 12, // Annualized
+      tenure: (parseInt(row.YearsAtCompany, 10) || 0) * 12, // converted to months for the engine
+      baseSalaryCompetitiveness: compRatio,
+      commutingDistance: commutingDistance,
+      baseOvertimeHours: baseOvertimeHours,
+      performanceRating: perfRating,
+      jobSatisfaction: jobSatisfaction,
+      burnoutLevel: burnoutLevel,
       status: 'Active',
       attritionReason: null,
-      flightRisk: 'Low', // Will be calculated dynamically
-      effectiveCommute: Math.max(1, randomNormal(20, 15)) // Initial value same as commutingDistance
+      flightRisk: 'Low', // Placeholder, calculated properly below
+      effectiveCommute: commutingDistance // Initial value
     };
-  }).map(agent => ({
+  });
+  
+  // Re-calculate derived stats expected by simulation
+  return agents.map(agent => ({
     ...agent,
-    commutingDistance: agent.effectiveCommute, // Keep base distance
     flightRisk: computeFlightRisk(agent, agent.baseSalaryCompetitiveness)
   }));
 }
@@ -72,15 +138,15 @@ function simulateSingleRun(initialAgents, months, rules) {
       
       // Calculate dynamic stress
       let stressDelta = 0;
-      if (effectiveOvertime > 20) stressDelta += 0.05;
-      if (effectiveCommute > 30) stressDelta += 0.02;
-      if (rules.wellnessProgram) stressDelta -= 0.04;
+      if (effectiveOvertime > 20) stressDelta += 0.025;
+      if (effectiveCommute > 30) stressDelta += 0.01;
+      if (rules.wellnessProgram) stressDelta -= 0.02;
       
       agent.burnoutLevel = Math.max(0, Math.min(1, agent.burnoutLevel + stressDelta));
       
       // Calculate satisfaction drops
-      if (effectiveSalaryComp < 0.9) agent.jobSatisfaction -= 0.02;
-      if (rules.mandatedOvertime > 10) agent.jobSatisfaction -= 0.03;
+      if (effectiveSalaryComp < 0.9) agent.jobSatisfaction -= 0.01;
+      if (rules.mandatedOvertime > 10) agent.jobSatisfaction -= 0.015;
       
       // Update visible flight risk
       agent.flightRisk = computeFlightRisk(agent, effectiveSalaryComp);
@@ -88,9 +154,9 @@ function simulateSingleRun(initialAgents, months, rules) {
       // Base resignation probability (stochastic element — configurable via rules)
       let resignProbability = rules.naturalAttrition ?? 0.005; 
       
-      if (agent.burnoutLevel > 0.8 && effectiveSalaryComp < 0.95) resignProbability += 0.25;
-      if (agent.tenure > 36 && agent.jobSatisfaction > 0.7) resignProbability *= 0.3;
-      else if (agent.jobSatisfaction < 0.4) resignProbability += 0.15;
+      if (agent.burnoutLevel > 0.8 && effectiveSalaryComp < 0.95) resignProbability += 0.08;
+      if (agent.tenure > 36 && agent.jobSatisfaction > 0.7) resignProbability *= 0.5;
+      else if (agent.jobSatisfaction < 0.4) resignProbability += 0.05;
       
       // Stochastic roll
       if (Math.random() < resignProbability) {

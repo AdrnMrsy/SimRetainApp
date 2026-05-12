@@ -26,7 +26,7 @@
 
 ## Overview
 
-SimRetain generates a synthetic workforce of configurable size, each agent having attributes like salary, tenure, burnout, and satisfaction. Users adjust **strategy variables** (salary modifiers, overtime policies, WFH, wellness programs) and run a Monte Carlo simulation to project:
+SimRetain loads a real-world employee attrition dataset (the IBM HR Attrition dataset) consisting of 1,470 employee profiles, each with real attributes like salary, tenure, role, and job satisfaction. Users adjust **strategy variables** (salary modifiers, overtime policies, WFH, wellness programs) and run a Monte Carlo simulation to project:
 
 - **Retained headcount** over time (area chart)
 - **Root cause analysis** of departures (bar chart)
@@ -76,23 +76,23 @@ SimRetainApp/
 
 The engine runs entirely client-side in the browser. There is no backend.
 
-### Agent Generation
+### Agent Initialization (Data-Driven)
 
-**Function:** `generateAgents(count)`
+**Function:** `generateAgents()`
 
-Each agent is initialized with normally-distributed attributes using the **Box-Muller transform** (`randomNormal` helper):
+Instead of generating synthetic data, SimRetain parses the `WA_Fn-UseC_-HR-Employee-Attrition.csv` dataset. The raw data undergoes feature engineering to map to the simulation engine:
 
-| Attribute                    | Distribution             | Range / Notes                           |
-| ---------------------------- | ------------------------ | --------------------------------------- |
-| `department`                 | 50/50 coin flip          | `"IT"` or `"Engineering"`               |
-| `annualSalary`               | Derived from `compRatio` | IT base: $95k, Eng base: $105k          |
-| `baseSalaryCompetitiveness`  | Normal(0.95, 0.15)       | Clamped [0.6, 1.4] — ratio to market    |
-| `tenure`                     | Normal(36, 24)           | Months, floored at 0                    |
-| `commutingDistance`          | Normal(20, 15)           | Kilometers, min 1                       |
-| `baseOvertimeHours`          | Normal(10, 10)           | Hours/month, min 0                      |
-| `performanceRating`          | Normal(3.2, 1)           | Integer [1–5]                           |
-| `jobSatisfaction`            | Normal(0.7, 0.2)         | Clamped [0.1, 1.0]                      |
-| `burnoutLevel`               | Normal(0.3, 0.2)         | Clamped [0.0, 1.0]                      |
+| Attribute                    | Derived From / Notes                                      |
+| ---------------------------- | --------------------------------------------------------- |
+| `department`                 | Raw `Department` field                                    |
+| `annualSalary`               | `MonthlyIncome` × 12                                      |
+| `baseSalaryCompetitiveness`  | Calculated as agent's salary vs. market average for their `JobRole` (Clamped [0.6, 1.4]) |
+| `tenure`                     | `YearsAtCompany` × 12 (converted to months)               |
+| `commutingDistance`          | Raw `DistanceFromHome`                                    |
+| `baseOvertimeHours`          | Inferred from `OverTime` ('Yes' = 20 hrs/mo, 'No' = 0-4)  |
+| `performanceRating`          | Raw `PerformanceRating`                                   |
+| `jobSatisfaction`            | Raw `JobSatisfaction` scaled to [0.1, 1.0]                |
+| `burnoutLevel`               | Reversed `WorkLifeBalance` scaled to [0.0, 1.0]           |
 
 After generation, each agent's `flightRisk` is computed via `computeFlightRisk()`.
 
@@ -183,7 +183,6 @@ These control **simulation fidelity and scope**:
 
 | Variable                  | Control Type | Range          | Default | Purpose                                                               |
 | ------------------------- | ------------ | -------------- | ------- | --------------------------------------------------------------------- |
-| **Headcount**             | Slider       | 50 – 2,000     | 500     | Number of agents generated (regenerates workforce on change)          |
 | **Natural Attrition**     | Slider       | 0% – 5%        | 0.5%    | Baseline monthly resignation probability ("noise"). Set to 0 for a perfect-world scenario |
 | **Duration**              | Slider       | 3 – 36 months  | 12      | Number of months to project forward                                   |
 | **Monte Carlo Iterations**| Slider       | 5 – 50         | 10      | Number of independent simulation runs averaged together. Higher = more stable but slower |
@@ -289,11 +288,11 @@ npm run preview
 ## Usage Guide
 
 1. **Adjust Strategy Variables** — Use the sliders and toggles in the left panel to model different organizational policies
-2. **Configure the Simulation** — Set headcount, natural attrition baseline, projection duration, and iteration count
+2. **Configure the Simulation** — Set the natural attrition baseline, projection duration, and iteration count
 3. **Run Simulation** — Click the "Simulate X Months" button. Results appear after ~800ms
 4. **Analyze Results** — Review the headcount projection chart, attrition root cause breakdown, KPI cards, and turnover cost estimate
 5. **Inspect Individual Agents** — Switch to the "Employee Roster" tab to see per-employee burnout, satisfaction, flight risk, and resignation reasons
-6. **Reset** — Click the reset button (↩) to regenerate a fresh workforce and clear results
+6. **Reset** — Click the reset button (↩) to reload the clean dataset and clear results
 7. **Compare Scenarios** — Adjust variables and re-run to compare outcomes (e.g., "What if we enable WFH?" vs. "What if we increase salary by 20%?")
 
 ### Example Scenarios

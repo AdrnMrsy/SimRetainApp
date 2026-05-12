@@ -4,6 +4,12 @@ import { Play, RotateCcw, Activity, Users, LayoutDashboard, TrendingDown, Dollar
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { generateAgents, runMonteCarloSimulation } from './simulation/engine';
 import EmployeeTable from './components/EmployeeTable';
+import NeuralNetworkBackground from './components/NeuralNetworkBackground';
+import IntroPage from './components/IntroPage';
+import GlassCard from './components/ui/GlassCard';
+import ToggleSwitch from './components/ui/ToggleSwitch';
+import MetricCard from './components/ui/MetricCard';
+import CustomTooltip from './components/ui/CustomTooltip';
 
 /* ── Theme Hook ── */
 function useTheme() {
@@ -29,67 +35,6 @@ function useTheme() {
   return { isDark, toggle: () => setIsDark(p => !p) };
 }
 
-/* ── Animated Glass Card ── */
-const GlassCard = ({ children, className = "", delay = 0 }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ duration: 0.5, delay, ease: [0.25, 0.46, 0.45, 0.94] }}
-    className={`bg-surface-card backdrop-blur-xl border border-border-subtle rounded-2xl p-6 shadow-[0_8px_32px_rgba(0,0,0,0.08)] transition-all duration-300 hover:shadow-[0_12px_48px_rgba(0,0,0,0.12)] hover:bg-surface-card-hover ${className}`}
-  >
-    {children}
-  </motion.div>
-);
-
-/* ── Custom Toggle Switch ── */
-const ToggleSwitch = ({ checked, onChange, label, description }) => (
-  <div className="flex items-center justify-between py-3">
-    <div className="flex flex-col gap-0.5">
-      <span className="text-sm font-medium text-text-primary">{label}</span>
-      {description && <span className="text-xs text-text-faint">{description}</span>}
-    </div>
-    <button
-      onClick={() => onChange(!checked)}
-      className={`relative w-12 h-6 rounded-full transition-all duration-300 ${checked ? 'bg-gradient-to-r from-brand-primary to-brand-secondary shadow-[0_0_12px_rgba(139,92,246,0.4)]' : 'bg-surface-input'}`}
-    >
-      <motion.div
-        layout
-        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-        className={`absolute top-0.5 w-5 h-5 rounded-full shadow-md ${checked ? 'left-[26px] bg-white' : 'left-0.5 bg-text-muted'}`}
-      />
-    </button>
-  </div>
-);
-
-/* ── Custom Tooltip for Charts ── */
-const CustomTooltip = ({ active, payload, label }) => {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="bg-[var(--tooltip-bg)] backdrop-blur-xl border border-[var(--tooltip-border)] rounded-xl px-4 py-3 shadow-2xl">
-      <p className="text-xs text-text-muted mb-1">{label}</p>
-      {payload.map((entry, i) => (
-        <p key={i} className="text-sm font-semibold" style={{ color: entry.color }}>
-          {entry.name}: {entry.value.toLocaleString()}
-        </p>
-      ))}
-    </div>
-  );
-};
-
-/* ── KPI Metric Card ── */
-const MetricCard = ({ icon: Icon, label, value, subtitle, color = "brand-primary", delay = 0 }) => (
-  <GlassCard className="flex flex-col gap-3 group" delay={delay}>
-    <div className="flex items-center justify-between">
-      <span className="text-xs text-text-faint uppercase tracking-[0.15em] font-medium">{label}</span>
-      <div className={`p-2 rounded-lg bg-${color}/10 text-${color} group-hover:scale-110 transition-transform`}>
-        <Icon size={16} />
-      </div>
-    </div>
-    <span className="text-3xl font-bold tracking-tight text-text-primary">{value}</span>
-    <span className="text-xs text-text-faint">{subtitle}</span>
-  </GlassCard>
-);
-
 /* ── Page Transition Variants ── */
 const pageVariants = {
   initial: { opacity: 0, x: 20, filter: 'blur(4px)' },
@@ -99,6 +44,7 @@ const pageVariants = {
 
 function App() {
   const { isDark, toggle: toggleTheme } = useTheme();
+  const [hasStarted, setHasStarted] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [baseSalaryModifier, setBaseSalaryModifier] = useState(1.0);
   const [wfhEnabled, setWfhEnabled] = useState(false);
@@ -109,12 +55,11 @@ function App() {
   const [results, setResults] = useState({ history: [], reasons: [], avgCostOfTurnover: 0 });
 
   // New simulation config controls
-  const [headcount, setHeadcount] = useState(500);
   const [naturalAttrition, setNaturalAttrition] = useState(0.5); // displayed as %
   const [simMonths, setSimMonths] = useState(12);
   const [iterations, setIterations] = useState(10);
 
-  useEffect(() => { setAgents(generateAgents(headcount)); }, [headcount]);
+  useEffect(() => { setAgents(generateAgents()); }, []);
 
   const activeCount = useMemo(() => agents.filter(a => a.status === 'Active').length, [agents]);
   const avgSatisfaction = useMemo(() => {
@@ -135,12 +80,12 @@ function App() {
   };
 
   const handleReset = () => {
-    setAgents(generateAgents(headcount));
+    setAgents(generateAgents());
     setResults({ history: [], reasons: [], avgCostOfTurnover: 0 });
   };
 
-  const currentAttritionRate = results.history.length > 0
-    ? ((headcount - results.history[results.history.length - 1].activeHeadcount) / headcount * 100).toFixed(1)
+  const currentAttritionRate = results.history.length > 0 && agents.length > 0
+    ? ((agents.length - results.history[results.history.length - 1].activeHeadcount) / agents.length * 100).toFixed(1)
     : '0.0';
 
   const formatCurrency = (val) =>
@@ -153,9 +98,14 @@ function App() {
 
   return (
     <div className="w-full max-w-[1440px] mx-auto px-4 md:px-8 py-6 min-h-screen flex flex-col">
+      <NeuralNetworkBackground isDark={isDark} />
 
-      {/* ── Header ── */}
-      <motion.header
+      {!hasStarted ? (
+        <IntroPage onStart={() => setHasStarted(true)} />
+      ) : (
+        <>
+          {/* ── Header ── */}
+          <motion.header
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
@@ -259,16 +209,6 @@ function App() {
             <h2 className="text-base font-semibold text-text-primary">Simulation Config</h2>
           </div>
 
-          {/* Headcount */}
-          <div className="mb-5">
-            <div className="flex justify-between mb-1.5">
-              <span className="text-sm text-text-secondary">Headcount</span>
-              <span className="text-sm font-bold text-brand-primary tabular-nums">{headcount}</span>
-            </div>
-            <p className="text-[11px] text-text-faint mb-2">Total starting number of agents.</p>
-            <input type="range" min="50" max="2000" step="50" value={headcount} onChange={(e) => setHeadcount(parseInt(e.target.value))} />
-          </div>
-
           {/* Natural Attrition */}
           <div className="mb-5">
             <div className="flex justify-between mb-1.5">
@@ -346,7 +286,7 @@ function App() {
             <motion.div key="dashboard" variants={pageVariants} initial="initial" animate="animate" exit="exit" className="flex flex-col gap-6 overflow-hidden">
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <MetricCard icon={Users} label="Initial Headcount" value={headcount.toLocaleString()} subtitle="Starting workforce baseline" delay={0.1} />
+                <MetricCard icon={Users} label="Initial Headcount" value={agents.length.toLocaleString()} subtitle="Fixed from dataset size" delay={0.1} />
                 <MetricCard icon={TrendingDown} label="Predicted Attrition" value={`${currentAttritionRate}%`} subtitle="Projected over 12 months" color="danger" delay={0.2} />
                 <MetricCard icon={Heart} label="Avg Satisfaction" value={`${avgSatisfaction}%`} subtitle="Current employee sentiment" color="success" delay={0.3} />
               </div>
@@ -366,7 +306,7 @@ function App() {
                         </defs>
                         <CartesianGrid stroke={chartGrid} strokeDasharray="3 3" />
                         <XAxis dataKey="month" stroke={chartAxis} tick={{ fontSize: 12 }} />
-                        <YAxis stroke={chartAxis} tick={{ fontSize: 12 }} domain={['dataMin - 20', 500]} />
+                        <YAxis stroke={chartAxis} tick={{ fontSize: 12 }} domain={['dataMin - 20', agents.length || 1470]} />
                         <Tooltip content={<CustomTooltip />} />
                         <Area type="monotone" dataKey="activeHeadcount" name="Active Agents" stroke="#8b5cf6" strokeWidth={2.5} fill="url(#headcountGradient)" dot={{ r: 3, fill: '#a78bfa', strokeWidth: 0 }} activeDot={{ r: 6, fill: '#8b5cf6', stroke: '#c4b5fd', strokeWidth: 2 }} />
                       </AreaChart>
@@ -418,6 +358,8 @@ function App() {
           )}
         </AnimatePresence>
       </div>
+      </>
+      )}
     </div>
   );
 }

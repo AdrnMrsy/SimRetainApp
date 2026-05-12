@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { HardDrive, Cpu, AlertTriangle, Shield, ShieldAlert, MapPin } from 'lucide-react';
+import { HardDrive, Cpu, AlertTriangle, Shield, ShieldAlert, MapPin, Users } from 'lucide-react';
+import EmployeeDetailDrawer from './EmployeeDetailDrawer';
 
 const riskConfig = {
   High: { color: 'text-red-400 bg-red-500/10 border-red-500/20', icon: ShieldAlert },
@@ -9,11 +10,17 @@ const riskConfig = {
 };
 
 const deptConfig = {
-  IT: { color: 'border-sky-500/30 text-sky-400 bg-sky-500/10', icon: HardDrive },
-  Engineering: { color: 'border-violet-500/30 text-violet-400 bg-violet-500/10', icon: Cpu },
+  'Sales': { color: 'border-sky-500/30 text-sky-400 bg-sky-500/10', icon: HardDrive },
+  'Research & Development': { color: 'border-violet-500/30 text-violet-400 bg-violet-500/10', icon: Cpu },
+  'Human Resources': { color: 'border-amber-500/30 text-amber-400 bg-amber-500/10', icon: Users },
+  'IT': { color: 'border-sky-500/30 text-sky-400 bg-sky-500/10', icon: HardDrive },
+  'Engineering': { color: 'border-violet-500/30 text-violet-400 bg-violet-500/10', icon: Cpu },
+  'default': { color: 'border-slate-500/30 text-slate-400 bg-slate-500/10', icon: Users }
 };
 
 export default function EmployeeTable({ agents, isDark }) {
+  const [selectedAgent, setSelectedAgent] = useState(null);
+
   const sortedAgents = [...agents].sort((a, b) => {
     if (a.status !== b.status) return a.status === 'Active' ? -1 : 1;
     const riskOrder = { High: 3, Medium: 2, Low: 1 };
@@ -25,8 +32,9 @@ export default function EmployeeTable({ agents, isDark }) {
   const highRiskCount = sortedAgents.filter(a => a.status === 'Active' && a.flightRisk === 'High').length;
 
   return (
-    <div className="w-full h-full overflow-hidden flex flex-col">
-      {/* Header */}
+    <>
+      <div className="w-full h-full overflow-hidden flex flex-col">
+        {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5">
         <div>
           <h2 className="text-lg font-semibold text-text-primary">Employee Roster</h2>
@@ -63,7 +71,7 @@ export default function EmployeeTable({ agents, isDark }) {
           </thead>
           <tbody className="divide-y divide-border-muted">
             {sortedAgents.map((agent, i) => {
-              const dept = deptConfig[agent.department];
+              const dept = deptConfig[agent.department] || deptConfig['default'];
               const risk = riskConfig[agent.flightRisk];
               const DeptIcon = dept.icon;
               const RiskIcon = risk.icon;
@@ -84,7 +92,8 @@ export default function EmployeeTable({ agents, isDark }) {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: i * 0.003, duration: 0.3 }}
-                  className={`transition-colors ${isResigned ? 'opacity-40' : ''} ${i % 2 === 0 ? 'bg-transparent' : 'bg-[var(--row-alt)]'}`}
+                  onClick={() => setSelectedAgent(agent)}
+                  className={`transition-colors cursor-pointer ${isResigned ? 'opacity-40' : ''} ${i % 2 === 0 ? 'bg-transparent' : 'bg-[var(--row-alt)]'}`}
                   style={{ '--tw-bg-opacity': 1 }}
                   onMouseEnter={e => { if (!isResigned) e.currentTarget.style.backgroundColor = `var(--row-hover)`; }}
                   onMouseLeave={e => { e.currentTarget.style.backgroundColor = i % 2 !== 0 ? `var(--row-alt)` : 'transparent'; }}
@@ -144,6 +153,8 @@ export default function EmployeeTable({ agents, isDark }) {
           </tbody>
         </table>
       </div>
-    </div>
+      </div>
+      <EmployeeDetailDrawer agent={selectedAgent} onClose={() => setSelectedAgent(null)} />
+    </>
   );
 }
