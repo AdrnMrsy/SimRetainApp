@@ -2,6 +2,10 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Target, Layers, Zap, CheckCircle, Database, GitMerge, UserCheck, Activity } from 'lucide-react';
 import GlassCard from './ui/GlassCard';
+import AdrianImg from '../assets/AdrianImage.png';
+import KimImg from '../assets/KimImage.jpg';
+import JohnImg from '../assets/JohnImage.png';
+
 
 const fadeIn = {
   hidden: { opacity: 0, y: 20 },
@@ -57,14 +61,25 @@ const AboutPage = () => {
           <UserCheck className="text-brand-primary" size={24} />
           <h2 className="text-2xl font-bold text-text-primary">The Team</h2>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {['Adrian Morrissey Belo', 'Kim Ryan Nabo', 'John Adrian Llanita'].map((name, idx) => (
-            <GlassCard key={idx} delay={idx * 0.1} className="flex flex-col items-center text-center p-6 hover:-translate-y-1 transition-transform duration-300">
-              <div className="w-16 h-16 rounded-full bg-surface-elevated border-2 border-border-subtle flex items-center justify-center mb-4 shadow-inner">
-                <span className="text-xl font-bold text-brand-secondary">{name.charAt(0)}</span>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
+          {[
+            { name: 'ADRIAN MORRISSEY BELO', role: 'Lead Developer', image: AdrianImg },
+            { name: 'KIM RYAN NABO', role: 'Project Manager', image: KimImg },
+            { name: 'JOHN ADRIAN LLANITA', role: 'Lead Researcher', image: JohnImg }
+          ].map((member, idx) => (
+            <GlassCard key={idx} delay={idx * 0.1} className="flex flex-col items-center text-center p-8 hover:-translate-y-2 transition-all duration-500 group">
+              <div className="relative mb-6">
+                <div className="absolute inset-0 bg-brand-secondary/10 rounded-full blur-2xl group-hover:bg-brand-secondary/30 transition-colors duration-500" />
+                <div className="relative w-36 h-36 md:w-44 md:h-44 rounded-full overflow-hidden border-4 border-surface-elevated group-hover:border-brand-secondary/50 shadow-2xl transition-all duration-500 z-10 bg-white dark:bg-surface-base">
+                  <img 
+                    src={member.image} 
+                    alt={member.name} 
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  />
+                </div>
               </div>
-              <h3 className="font-semibold text-text-primary text-lg">{name}</h3>
-              <p className="text-sm text-text-faint mt-1">Lead Developer</p>
+              <h3 className="font-black text-brand-secondary text-sm md:text-base tracking-[0.1em] mb-1">{member.name}</h3>
+              <p className="text-xs font-bold text-text-faint uppercase tracking-widest">{member.role}</p>
             </GlassCard>
           ))}
         </div>
