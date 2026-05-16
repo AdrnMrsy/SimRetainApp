@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Target, Layers, Zap, CheckCircle, Database, GitMerge, UserCheck, Activity } from 'lucide-react';
 import GlassCard from './ui/GlassCard';
+import Footer from './Footer';
 import AdrianImg from '../assets/AdrianImage.png';
 import KimImg from '../assets/KimImage.jpg';
 import JohnImg from '../assets/JohnImage.png';
@@ -131,9 +132,18 @@ const AboutPage = () => {
               <Database className="text-brand-primary" size={20} />
             </div>
             <h3 className="font-semibold text-text-primary mb-2">1. Real-World Dataset</h3>
-            <p className="text-sm text-text-secondary leading-relaxed">
+            <p className="text-sm text-text-secondary leading-relaxed mb-4">
               Integrated with IBM's HR Attrition dataset. Agents' base attributes (salary ratio, job role, baseline satisfaction) are mapped directly from real data, ensuring statistically valid starting correlations.
             </p>
+            <a 
+              href="https://www.kaggle.com/datasets/pavansubhasht/ibm-hr-analytics-attrition-dataset" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 text-xs font-bold text-brand-primary hover:text-brand-secondary transition-colors"
+            >
+              View Dataset on Kaggle
+              <Activity size={12} />
+            </a>
           </GlassCard>
 
           <GlassCard delay={0.2}>
@@ -205,6 +215,7 @@ const AboutPage = () => {
         </GlassCard>
       </motion.div>
 
+      <Footer />
     </div>
   );
 };

@@ -12,6 +12,7 @@ import ToggleSwitch from './components/ui/ToggleSwitch';
 import MetricCard from './components/ui/MetricCard';
 import CustomTooltip from './components/ui/CustomTooltip';
 
+
 /* ── Theme Hook ── */
 function useTheme() {
   const [isDark, setIsDark] = useState(() => {
@@ -378,7 +379,7 @@ function App() {
           )}
         </AnimatePresence>
       </div>
-      </>
+        </>
       )}
     </div>
   );
