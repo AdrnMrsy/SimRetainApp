@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, RotateCcw, Activity, Users, LayoutDashboard, TrendingDown, DollarSign, Heart, Zap, Sun, Moon } from 'lucide-react';
+import { Play, RotateCcw, Activity, Users, LayoutDashboard, TrendingDown, DollarSign, Heart, Zap, Sun, Moon, Info } from 'lucide-react';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { generateAgents, runMonteCarloSimulation } from './simulation/engine';
+import { generateAgents } from './simulation/engine';
 import EmployeeTable from './components/EmployeeTable';
 import NeuralNetworkBackground from './components/NeuralNetworkBackground';
 import IntroPage from './components/IntroPage';
+import AboutPage from './components/AboutPage';
 import GlassCard from './components/ui/GlassCard';
 import ToggleSwitch from './components/ui/ToggleSwitch';
 import MetricCard from './components/ui/MetricCard';
@@ -70,13 +71,25 @@ function App() {
 
   const handleRunSimulation = () => {
     setIsSimulating(true);
-    setTimeout(() => {
-      const rules = { baseSalaryModifier, wfhEnabled, mandatedOvertime, wellnessProgram, naturalAttrition: naturalAttrition / 100 };
-      const simResults = runMonteCarloSimulation(agents, simMonths, rules, iterations);
+    const rules = { baseSalaryModifier, wfhEnabled, mandatedOvertime, wellnessProgram, naturalAttrition: naturalAttrition / 100 };
+    
+    const worker = new Worker(new URL('./simulation/engine.worker.js', import.meta.url), { type: 'module' });
+    
+    worker.postMessage({ agents, simMonths, rules, iterations });
+    
+    worker.onmessage = (e) => {
+      const simResults = e.data;
       setResults(simResults);
       if (simResults.sampleAgents) setAgents(simResults.sampleAgents);
       setIsSimulating(false);
-    }, 800);
+      worker.terminate();
+    };
+
+    worker.onerror = (error) => {
+      console.error('Simulation worker error:', error);
+      setIsSimulating(false);
+      worker.terminate();
+    };
   };
 
   const handleReset = () => {
@@ -148,6 +161,7 @@ function App() {
             {[
               { id: 'dashboard', label: 'Analytics', icon: LayoutDashboard },
               { id: 'roster', label: 'Employee Roster', icon: Users },
+              { id: 'about', label: 'About Project', icon: Info },
             ].map(tab => (
               <button
                 key={tab.id}
@@ -172,9 +186,10 @@ function App() {
       </motion.header>
 
       {/* ── Main Grid ── */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-6">
+      <div className={`flex-1 grid grid-cols-1 ${activeTab === 'about' ? '' : 'lg:grid-cols-[340px_1fr]'} gap-6`}>
 
         {/* ── Controls Panel ── */}
+        {activeTab !== 'about' && (
         <GlassCard delay={0.1} className="self-start lg:sticky lg:top-8">
           <div className="flex items-center gap-2 mb-6">
             <Zap size={18} className="text-brand-primary" />
@@ -236,7 +251,7 @@ function App() {
               <span className="text-sm font-bold text-brand-primary tabular-nums">{iterations}</span>
             </div>
             <p className="text-[11px] text-text-faint mb-2">Higher = more statistically stable, but slower.</p>
-            <input type="range" min="5" max="50" step="5" value={iterations} onChange={(e) => setIterations(parseInt(e.target.value))} />
+            <input type="range" min="10" max="1000" step="10" value={iterations} onChange={(e) => setIterations(parseInt(e.target.value))} />
           </div>
 
           <div className="border-t border-border-subtle my-4" />
@@ -279,6 +294,7 @@ function App() {
             )}
           </AnimatePresence>
         </GlassCard>
+        )}
 
         {/* ── Dynamic Content ── */}
         <AnimatePresence mode="wait">
@@ -349,11 +365,15 @@ function App() {
                 </div>
               </GlassCard>
             </motion.div>
-          ) : (
+          ) : activeTab === 'roster' ? (
             <motion.div key="roster" variants={pageVariants} initial="initial" animate="animate" exit="exit">
               <GlassCard className="flex flex-col h-[calc(100vh-12rem)]" delay={0.1}>
                 <EmployeeTable agents={agents} isDark={isDark} />
               </GlassCard>
+            </motion.div>
+          ) : (
+            <motion.div key="about" variants={pageVariants} initial="initial" animate="animate" exit="exit">
+              <AboutPage />
             </motion.div>
           )}
         </AnimatePresence>

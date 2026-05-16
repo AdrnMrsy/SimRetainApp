@@ -68,7 +68,7 @@ const IntroPage = ({ onStart }) => {
           <FeatureItem
             icon={TrendingUp}
             title="Monte Carlo Projections"
-            description="Run thousands of iterative simulations to confidently forecast retention rates and identify statistically significant trends."
+            description="Run up to 1000 iterative simulations to confidently forecast retention rates and identify statistically significant trends."
             delay={0.5}
           />
           <FeatureItem
